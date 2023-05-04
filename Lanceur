@@ -1,0 +1,316 @@
+#include <cmath>
+#include <iostream>
+
+/// *************************************************
+using namespace std;
+using namespace grapic;
+
+/// *************************************************
+const int DIMW = 800;
+const float friction = 0.60;
+const float dt =0.01;
+const float g = -9.81;
+
+/// *************************************************
+struct Complex
+{
+    float x, y;
+};
+Complex make_complex(float x, float y)
+{
+    Complex c;
+    c.x = x;
+    c.y = y;
+    return c;
+}
+
+Complex make_complex_exp(float r, float theta_deg)
+{
+    Complex c;
+    c.x = r*cos(theta_deg);
+    c.y = r*sin (theta_deg);
+    return c;
+}
+
+Complex operator+(Complex a, Complex b)
+{
+    Complex c = make_complex(a.x + b.x, a.y + b.y);
+    return c;
+}
+
+Complex operator-(Complex a, Complex b)
+{
+    Complex c = make_complex(a.x - b.x, a.y - b.y);
+    return c;
+}
+
+Complex operator*(float lambda, Complex b)
+{
+    Complex c = make_complex(lambda*b.x,lambda*b.y);
+    return c;
+}
+
+Complex operator/(Complex b, float d)
+{
+    Complex c = make_complex( b.x/d, b.y/d );
+    return c;
+}
+
+Complex scale(Complex p, float cx, float cy, float lambda)
+{
+    Complex centre = make_complex( cx, cy);
+    return (lambda*(p-centre))+centre;
+}
+
+float rad_trad(float deg)
+{
+    return ( M_PI*deg/180.f);
+}
+Complex operator*(Complex a, Complex b)
+{
+    Complex c = make_complex(a.x*b.x - a.y*b.y, a.x*b.y + a.y*b.x);/// (a.x*b.x, a.y*b.y)  ????
+    return c ;
+}
+Complex rotate(Complex p, float cx, float cy, float theta_deg)
+{
+    Complex rot = make_complex_exp(1, rad_trad(theta_deg));
+    Complex centre = make_complex(cx, cy);
+    return (p-centre)*rot+centre;
+}
+
+/// **********************************************************************************
+struct Balle // Bon.
+{
+    Complex position, vitesse, force;
+    float angle;
+    float masse;
+};
+struct Panier
+{
+    Complex position;//panier
+};
+
+struct Joueur
+{
+    Complex position;
+    float score;
+};
+
+struct World // ok
+{
+    float dt;
+    Balle B;
+    Panier P1,P2;
+    Joueur a, b;
+};
+
+void initballe(Balle &B)
+{
+    B.position=make_complex(DIMW/2,20);
+    B.vitesse=make_complex(2,2);
+    B.force=make_complex(0,0);
+    B.masse=1.0;
+}
+
+void drawballe(Balle &B) // ne plus toucher
+{
+    color(12,12,0);
+    circleFill(B.position.x, B.position.y, 20);
+}
+
+void initpanier(Panier &p1) // Ne plus toucher
+{
+    p1.position = make_complex(0,430); // Pourquoi ca n'a pas marchÃ© ca ne bouge pas
+}
+
+void drawpanier1(Panier p1) // Ne plus toucher
+{
+    /// panier gauche
+    color(255,255,255);
+    rectangleFill(p1.position.x, p1.position.y, 60,445);/// Panier
+    color(12,12,0);
+    ///rectangleFill(100, 480, 15, 450);
+    rectangleFill(0, 0, 15, 500);
+}
+void initjoueura(Joueur &b)
+{
+    b.position=make_complex( (DIMW/2)+50 , 2);
+}
+void drawJoueura(Joueur &a)
+{
+    color(0,255,255);
+    rectangleFill(a.position.x,0,a.position.x+20,188);
+    circleFill(a.position.x,a.position.y,40);
+}
+/*void lancer(Joueur &a, Balle &B)
+{  float t = elapsedTime();
+   B.vitesse.x = B.vitesse.x * cos(B.angle);
+   B.vitesse.y = B.vitesse.y * sin(B.angle) - g * t;
+}
+void lancer( Joueur &a,Balle &B)
+{
+    float angle_rad = M_PI*B.angle/180.0;
+    float v0 = 10.0; // vitesse initiale
+    B.vitesse.x = v0*cos(angle_rad);
+    B.vitesse.y = v0*sin(angle_rad);
+}
+void lancer(Joueur &a, Balle &B)
+{
+    float t = elapsedTime();
+    B.vitesse.x = B.vitesse.x * cos(B.angle);
+    B.vitesse.y = B.vitesse.y * sin(B.angle) - g * t;
+    B.position = B.position + dt * B.vitesse ;
+}*/
+void lancer(Joueur a, Balle &balle)
+{
+     const float dt = 0.01; // temps écoulé entre chaque itération (en secondes)
+    const float hauteur_lancement = balle.position.y; // hauteur de lancement de la balle
+    const float position_lancement = balle.position.x; // position horizontale de la balle lors de son lancement
+
+    while (balle.position.y >= hauteur_lancement)
+    {
+        balle.position.x += balle.vitesse.x * dt;
+
+        // Calcul de la position verticale de la balle
+        balle.position.y += balle.vitesse.y * dt - 0.5 * g * dt * dt;
+
+        // Calcul de la vitesse de la balle
+        balle.vitesse = balle.vitesse + dt * (balle.force / balle.masse);
+
+        // Calcul de la trajectoire de la balle
+        balle.position.y = hauteur_lancement + (balle.position.x - position_lancement) * tan(balle.angle * M_PI / 180.0) - (g / (2 * balle.vitesse.x * balle.vitesse.x * cos(balle.angle * M_PI / 180.0) * cos(balle.angle * M_PI / 180.0))) * pow(balle.position.x - position_lancement, 2);
+
+        // Affichage de la position de la balle
+        //cout << "Position de la balle : (" << balle.position.x << "," << balle.position.y << ")" << endl;
+    }
+}
+void updatejoueura(Joueur& a, Joueur& b, Balle& B)
+{
+    const float d = 0.1f;
+    if (a.position.y > 3) {
+        a.position.y -= d;
+    }
+    while (isKeyPressed(SDLK_LEFT)) {
+        if (a.position.x > 0) {
+            a.position.x -= d + 20;
+        }
+    }
+    while (isKeyPressed(SDLK_RIGHT)) {
+        if (a.position.x < DIMW) {
+            a.position.x += d + 20;
+        }
+    }
+    if (isKeyPressed(SDLK_UP) && a.position.y < 20) {
+        a.position.y += 2.f * d + 300; // fait remonter l'oiseau si KEY_UP
+        float t = elapsedTime();
+    }
+    if (isKeyPressed(SDLK_DOWN))// && a.position.x <= B.position.x && a.position.x >= B.position.x + 20 && a.position.y <= B.position.y && a.position.y >= B.position.y + 20)
+    {
+        B.position = a.position;
+        lancer(a,B);
+
+        /// declenchement du lancer de ballon
+    }
+}
+
+void initpanier2(Panier &p2) /// voyons voir
+{
+    p2.position=make_complex(DIMW,430);
+}
+void drawpanier2(Panier p2)
+{
+    color(12,12,0);
+    rectangleFill(p2.position.x, p2.position.y, DIMW-60,445);/// Panier
+    color(215,255,255);
+    rectangleFill(DIMW,0,DIMW-15,500);
+}
+/// /////////////////////////
+void computegravityforce(World& w) //ok
+{
+    w.B.force.x = 0;
+    w.B.force.y= g*w.B.masse;
+}
+
+void addforce(Balle &b, Complex f) // ne pas toucher
+{
+    b.force=b.force+f;
+}
+void collision(Balle &B, Panier &P1, Panier &P2) //ok
+{
+    if (B.position.y<=0)
+    {
+        B.position.y=-B.position.y;
+        B.vitesse.y=-B.vitesse.y;
+        B.vitesse=friction*B.vitesse;
+    }
+    if (B.position.y>=DIMW)
+    {
+        B.position.y=DIMW-(B.position.y-DIMW);
+        B.vitesse.y=-B.vitesse.y;
+        B.vitesse=friction*B.vitesse;
+    }
+    if (B.position.x<=0)
+    {
+        B.position.x=-B.position.x;
+        B.vitesse.x=-B.vitesse.x;
+        B.vitesse=friction*B.vitesse;
+    }
+}
+
+
+void updateballe(World &w)
+{
+    Complex f;
+
+    w.B.position = make_complex(0,0);
+    f=make_complex(0,g*w.B.masse);
+    addforce(w.B,f);
+    w.B.vitesse = w.B.vitesse + dt*((1.0/w.B.masse)*w.B.force);
+    w.B.position = w.B.position + dt * w.B.vitesse;
+    collision(w.B,w.P1,w.P2);
+    //lancer(w.a,w.B);
+    //lancer(w.b,w.B);
+}
+
+void initworld(World& w) // à toucher ?
+{
+    w.dt = 0.01f;
+    initballe(w.B);
+    initpanier(w.P1);
+    initpanier2(w.P2);
+    initjoueura(w.a);
+}
+void drawworld(World &w)
+{
+    drawballe(w.B);
+    drawpanier1(w.P1);
+    drawpanier2(w.P2);
+    drawJoueura(w.a);
+    color(255,255,255);
+    line(DIMW/2, 0, DIMW/2, DIMW);
+    line(DIMW/2, 0, DIMW/2, DIMW);
+}
+void updateworld(World& w) // ok
+{
+    computegravityforce(w);
+    updatejoueura(w.a, w.b,w.B);
+    updateballe(w);
+}
+
+int main(int argc, char** argv)  // check
+{
+    bool stop=false;
+  	winInit("Mini projet...", DIMW, DIMW);
+  	backgroundColor(0,137,255);
+  	World w;
+    initworld(w);
+    while (!stop)
+    {
+        winClear();
+        drawworld(w);
+        updateworld(w);
+        stop = winDisplay();
+    }
+    winQuit();
+    return 0;
+}
